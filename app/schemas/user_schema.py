@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr # type: ignore
+import uuid
 
 class UserBase(BaseModel):
     name: str
@@ -8,7 +9,7 @@ class UserCreate(UserBase):
     pass
 
 class UserOut(UserBase):
-    id: int
+    id: uuid.UUID
 
     class Config:
         orm_mode = True
