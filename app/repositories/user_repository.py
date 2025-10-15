@@ -9,7 +9,7 @@ def get_user_by_id(db: Session, user_id):
     return db.query(User).filter(User.id == user_id).first()
 
 def create_user(db: Session, user: UserCreate):
-    new_user = User(name=user.name, email=user.email)
+    new_user = User(name=user.name, email=user.email, number=user.number, age=user.age, country=user.country)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
