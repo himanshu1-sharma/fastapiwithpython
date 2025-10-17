@@ -14,7 +14,3 @@ python-multipart>=0.0.9
 watchfiles==1.1.0
 httptools==0.7.1
 websockets==15.0.1
-boto3>=1.35.0
-botocore>=1.35.0
-python-multipart>=0.0.9
-

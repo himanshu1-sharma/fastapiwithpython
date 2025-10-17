@@ -13,10 +13,20 @@ class Settings(BaseSettings):
     DB_NAME: str
 
     # AWS/S3 (defaults prevent startup failure if env vars are missing)
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = ""
-    S3_BUCKET_NAME: str = ""
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
+    AWS_REGION: str
+    S3_BUCKET_NAME: str
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        print(f"AWS Configuration:")
+        print(f"  AWS_ACCESS_KEY_ID: {self.AWS_ACCESS_KEY_ID}")
+        print(f"  AWS_SECRET_ACCESS_KEY: {self.AWS_SECRET_ACCESS_KEY}")
+        print(f"  AWS_REGION: {self.AWS_REGION}")
+        print(f"  S3_BUCKET_NAME: {self.S3_BUCKET_NAME}")
+
+    
 
     @property
     def DATABASE_URL(self) -> str:
