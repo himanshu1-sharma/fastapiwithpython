@@ -8,7 +8,7 @@ class UserBase(BaseModel):
     number: str
     age: int
     country: str
-    profile_pic_url: str | None = None
+    # profile_pic_url: str | None = None
 
 class UserCreate(UserBase):
     pass

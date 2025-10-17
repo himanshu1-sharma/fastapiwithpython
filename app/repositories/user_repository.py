@@ -15,7 +15,7 @@ def create_user(db: Session, user: UserCreate):
         number=user.number, 
         age=user.age, 
         country=user.country,
-        profile_pic_url=user.profile_pic_url
+        # profile_pic_url=user.profile_pic_url
     )
     db.add(new_user)
     db.commit()

@@ -12,6 +12,6 @@ class User(Base):
     number = Column(String(20), nullable=True)
     age = Column(Integer, nullable=True)
     country = Column(String(20), nullable=True)
-    profile_pic_url = Column(String(512), nullable=True)
+    # profile_pic_url = Column(String(512), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
