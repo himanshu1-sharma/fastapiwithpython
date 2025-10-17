@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     number: str
     age: int
     country: str
+    profile_pic_url: str | None = None
 
 class UserCreate(UserBase):
     pass
@@ -18,4 +19,4 @@ class UserOut(UserBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
