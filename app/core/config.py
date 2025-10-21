@@ -28,12 +28,16 @@ class Settings(BaseSettings):
 
     
 
+    # @property
+    # def DATABASE_URL(self) -> str:
+    #     return (
+    #         f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
+    #         f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    #     )
+
     @property
     def DATABASE_URL(self) -> str:
-        return (
-            f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        )
+        return "postgresql://neondb_owner:npg_B63EmIputcSz@ep-wispy-base-adrsh2bz-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
     class Config:
         env_file = ".env"
