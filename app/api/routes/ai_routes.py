@@ -23,9 +23,15 @@ async def ask_openai(prompt: str):
             model=settings.OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage = response.usage
         return {
             "model": settings.OPENAI_MODEL,
             "response": response.choices[0].message.content,
+            "usage": {
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+            },
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OpenAI error: {e}")
@@ -39,9 +45,15 @@ async def ask_groq(prompt: str):
             model=settings.GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage = response.usage
         return {
             "model": settings.GROQ_MODEL,
             "response": response.choices[0].message.content,
+            "usage": {
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+            },
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Groq error: {e}")
@@ -66,10 +78,20 @@ async def compare_models(prompt: str):
             "openai": {
                 "model": settings.OPENAI_MODEL,
                 "response": openai_resp.choices[0].message.content,
+                "usage": {
+                    "prompt_tokens": openai_resp.usage.prompt_tokens,
+                    "completion_tokens": openai_resp.usage.completion_tokens,
+                    "total_tokens": openai_resp.usage.total_tokens,
+                },
             },
             "groq": {
                 "model": settings.GROQ_MODEL,
                 "response": groq_resp.choices[0].message.content,
+                "usage": {
+                    "prompt_tokens": groq_resp.usage.prompt_tokens,
+                    "completion_tokens": groq_resp.usage.completion_tokens,
+                    "total_tokens": groq_resp.usage.total_tokens,
+                },
             },
         }
     except Exception as e:
