@@ -4,15 +4,15 @@ from pydantic import BaseModel
 
 
 class ChatMemoryBase(BaseModel):
+    user_id:UUID
     question:str
     answer:str
 
 class ChatMemoryCreate(ChatMemoryBase):
-    user_id:UUID
-
+    pass
+    
 class ChatMemoryResponse(ChatMemoryBase):
     id:UUID
-    user_id:UUID
     created_at: datetime
 
     class Config:

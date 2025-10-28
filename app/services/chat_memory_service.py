@@ -1,11 +1,13 @@
 from sqlalchemy.orm import Session
 from app.repositories.chat_memory_repository import get_user_chat_memory, save_chat_memory
+from app.schemas.chat_memory_schema import ChatMemoryCreate
 from langchain_core.messages import HumanMessage, AIMessage
 from app.core.config import settings
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from uuid import UUID
 
 # Initialize LLM and Vector DB
 embeddings = OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY)
@@ -21,7 +23,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "Question: {input}\n\nContext:\n{context}")
 ])
 
-def chat_with_memory_db(db: Session, user_id: str, question: str):
+def chat_with_memory_db(db: Session, user_id: UUID, question: str):
     # 🧠 Load previous messages from DB
     db_history = get_user_chat_memory(db, user_id)
     messages = []
@@ -41,7 +43,12 @@ def chat_with_memory_db(db: Session, user_id: str, question: str):
         "context": context
     })
 
-    # Save chat to DB
-    save_chat_memory(db, user_id, question, answer)
+    # Save chat to DB - Create ChatMemoryCreate object
+    chat_data = ChatMemoryCreate(
+        user_id=user_id,
+        question=question,
+        answer=answer
+    )
+    save_chat_memory(db, chat_data)
 
     return {"answer": answer, "context": docs}
