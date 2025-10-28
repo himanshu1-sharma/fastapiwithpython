@@ -1,5 +1,5 @@
 from fastapi import FastAPI # type: ignore
-from app.api.routes import ai_memory_routes, ai_routes, user_routes
+from app.api.routes import ai_memory_routes, ai_routes, user_routes, chat_memory_routes
 from app.db.init_db import init_db
 from app.core.config import settings
 from app.core.logging_config import logger
@@ -14,6 +14,7 @@ init_db()
 app.include_router(user_routes.router)
 app.include_router(ai_routes.router)
 app.include_router(ai_memory_routes.router)
+app.include_router(chat_memory_routes.router)
 
 @app.get("/")
 def root():
