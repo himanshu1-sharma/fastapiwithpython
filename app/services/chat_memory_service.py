@@ -261,6 +261,406 @@
 
 
 
+# tavily with real time data
+# from langchain_core.tools import Tool
+# from sqlalchemy.orm import Session
+# from app.repositories.chat_memory_repository import get_user_chat_memory, save_chat_memory
+# from app.schemas.chat_memory_schema import ChatMemoryCreate
+# from langchain_core.messages import HumanMessage, AIMessage
+# from app.core.config import settings
+# from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_community.vectorstores import Chroma
+# from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+# from langchain_core.output_parsers import StrOutputParser
+# from tavily import TavilyClient
+# from uuid import UUID
+# import traceback
+# import logging
+# from datetime import datetime
+
+# logger = logging.getLogger(__name__)
+
+# # Initialize LLM, Vectorstore, and Tavily Search
+# try:
+#     print("🔧 [INIT] Starting initialization...")
+#     embeddings = OpenAIEmbeddings(api_key=settings.OPENAI_API_KEY)
+#     CHROMA_PATH = "app/db/chroma_storage_new"
+#     print(f"📁 [INIT] Chroma path: {CHROMA_PATH}")
+
+#     vectorstore = Chroma(
+#         persist_directory=CHROMA_PATH,
+#         embedding_function=embeddings
+#     )
+#     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+#     print("✅ [INIT] Vectorstore initialized")
+
+#     llm = ChatOpenAI(
+#         model=settings.OPENAI_MODEL,
+#         temperature=0.3,
+#         api_key=settings.OPENAI_API_KEY
+#     )
+#     print(f"✅ [INIT] LLM initialized: {settings.OPENAI_MODEL}")
+
+#     tavily_client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+#     print("✅ [INIT] Tavily Search initialized successfully")
+#     logger.info("Tavily Search initialized successfully")
+
+# except Exception as init_error:
+#     print(f"❌ [INIT ERROR] {init_error}")
+#     logger.error(f"Initialization error: {init_error}")
+#     logger.debug(traceback.format_exc())
+#     raise
+
+# # System Prompt (Hinglish + Personality)
+# prompt = ChatPromptTemplate.from_messages([
+#     (
+#         "system",
+#         f"""
+#         Tum {settings.BOT_NAME} ho — ek intelligent, polite aur thoda witty AI assistant 
+#         jise {settings.CREATOR_NAME} ne banaya hai.
+
+#         Rules:
+#         - Mix Hindi + English
+#         - Professional yet friendly
+#         - Apna character hamesha maintain karo
+#         - Agar user pooche "tum kaun ho", to confidently intro do
+#         """
+#     ),
+#     MessagesPlaceholder(variable_name="chat_history"),
+#     ("human", "Question: {input}\n\nContext:\n{context}")
+# ])
+
+# # Tavily Search Prompt
+# search_prompt = ChatPromptTemplate.from_messages([
+#     (
+#         "system",
+#         f"""
+#         Tum {settings.BOT_NAME} ho — ek smart AI assistant.
+#         Tumhe Tavily search se realtime data milta hai.
+
+#         Current date: {{current_date}}.
+#         Jo data mila hai, use concise aur apne tone me explain karo.
+#         Agar data outdated ho to user ko warn kar dena.
+#         """
+#     ),
+#     ("human", "Question: {question}\n\nTavily Results:\n{search_results}\n\nAnswer naturally:")
+# ])
+
+
+# def get_current_datetime_info():
+#     """Get current date/time details"""
+#     now = datetime.now()
+#     info = {
+#         "date": now.strftime("%d %B %Y"),
+#         "time": now.strftime("%I:%M %p"),
+#         "day": now.strftime("%A"),
+#     }
+#     print(f"📅 [TIME] Current info: {info}")
+#     return info
+
+
+# def extract_content_from_doc(doc):
+#     """
+#     Safely extract content from various document formats.
+#     Handles Document objects, dicts, and strings.
+#     """
+#     try:
+#         print(f"📄 [DOC] Extracting content from type: {type(doc)}")
+        
+#         # Case 1: Document object with page_content attribute
+#         if hasattr(doc, "page_content"):
+#             content = str(doc.page_content).strip()
+#             print(f"✅ [DOC] Extracted from page_content attribute: {content[:50]}...")
+#             return content
+        
+#         # Case 2: Dictionary with page_content key
+#         elif isinstance(doc, dict):
+#             print(f"🔑 [DOC] Dict keys: {list(doc.keys())}")
+#             if "page_content" in doc:
+#                 content = str(doc["page_content"]).strip()
+#                 print(f"✅ [DOC] Extracted from page_content key: {content[:50]}...")
+#                 return content
+#             elif "content" in doc:
+#                 content = str(doc["content"]).strip()
+#                 print(f"✅ [DOC] Extracted from content key: {content[:50]}...")
+#                 return content
+#             else:
+#                 content = str(doc).strip()
+#                 print(f"⚠️ [DOC] No content key, using string repr: {content[:50]}...")
+#                 return content
+        
+#         # Case 3: Plain string
+#         elif isinstance(doc, str):
+#             print(f"✅ [DOC] Already a string: {doc[:50]}...")
+#             return doc.strip()
+        
+#         # Case 4: Unknown type, convert to string
+#         else:
+#             content = str(doc).strip()
+#             print(f"⚠️ [DOC] Unknown type, converting to string: {content[:50]}...")
+#             logger.warning(f"Unknown document type: {type(doc)}")
+#             return content
+            
+#     except Exception as e:
+#         print(f"❌ [DOC ERROR] {e}")
+#         logger.error(f"Error extracting content from doc: {e}")
+#         return ""
+
+
+# def serialize_docs(docs):
+#     """
+#     Convert documents to JSON-serializable format.
+#     Returns a list of dicts with content and metadata.
+#     """
+#     print(f"🔄 [SERIALIZE] Starting serialization of {len(docs)} docs")
+#     serialized = []
+    
+#     for i, doc in enumerate(docs):
+#         try:
+#             print(f"🔄 [SERIALIZE] Doc {i}: type={type(doc)}")
+            
+#             # Extract content
+#             content = extract_content_from_doc(doc)
+            
+#             # Extract metadata if available
+#             metadata = {}
+#             if hasattr(doc, "metadata"):
+#                 metadata = doc.metadata
+#                 print(f"📋 [SERIALIZE] Doc {i}: Found metadata attribute")
+#             elif isinstance(doc, dict) and "metadata" in doc:
+#                 metadata = doc["metadata"]
+#                 print(f"📋 [SERIALIZE] Doc {i}: Found metadata key")
+            
+#             result = {
+#                 "content": content,
+#                 "metadata": metadata
+#             }
+#             serialized.append(result)
+#             print(f"✅ [SERIALIZE] Doc {i}: Successfully serialized")
+            
+#         except Exception as e:
+#             print(f"❌ [SERIALIZE ERROR] Doc {i}: {e}")
+#             logger.error(f"Error serializing doc: {e}")
+#             continue
+    
+#     print(f"✅ [SERIALIZE] Completed: {len(serialized)} docs serialized")
+#     return serialized
+
+
+# def chat_with_memory_db(db: Session, user_id: UUID, question: str):
+#     """Main Sharma Ji Bot Function (Tavily + Memory + Vector + LLM)"""
+#     try:
+#         print(f"\n{'='*60}")
+#         print(f"🚀 [START] New request")
+#         print(f"👤 [USER] ID: {user_id}")
+#         print(f"❓ [QUESTION] {question}")
+#         print(f"{'='*60}\n")
+        
+#         logger.info(f"Processing question: {question}")
+#         current_info = get_current_datetime_info()
+
+#         # Load chat memory
+#         print("💾 [MEMORY] Loading chat history...")
+#         db_history = get_user_chat_memory(db, user_id)
+#         print(f"💾 [MEMORY] Found {len(db_history)} previous messages")
+        
+#         messages = []
+#         for item in db_history:
+#             messages.append(HumanMessage(content=item.question))
+#             messages.append(AIMessage(content=item.answer))
+#         print(f"💾 [MEMORY] Built {len(messages)} message objects")
+
+#         # Handle direct date/time queries
+#         date_time_keywords = [
+#             "aaj ki date", "today date", "aaj ka din", "current date",
+#             "kya tarikh", "aaj kya date", "date kya hai", "time kya hai"
+#         ]
+#         print(f"🔍 [CHECK] Checking for date/time keywords...")
+#         if any(k in question.lower() for k in date_time_keywords):
+#             print("✅ [CHECK] Date/time keyword detected!")
+#             answer = f"Aaj {current_info['day']} hai, date {current_info['date']} aur time {current_info['time']} hai."
+#             save_chat_memory(db, ChatMemoryCreate(user_id=user_id, question=question, answer=answer))
+#             print(f"💬 [ANSWER] {answer}")
+#             return {"answer": answer, "context": [], "source_type": "system_time"}
+
+#         # Tavily Search (for real-time info)
+#         realtime_keywords = ["latest", "current", "news", "weather", "today", "2025", "score", "update", "ipl", "match", "win", "winner"]
+#         print(f"🔍 [CHECK] Checking for realtime keywords...")
+#         needs_search = any(k in question.lower() for k in realtime_keywords)
+#         print(f"🔍 [CHECK] Needs search: {needs_search}")
+
+#         if needs_search:
+#             try:
+#                 print(f"🌐 [TAVILY] Search triggered for: {question}")
+#                 logger.info(f"Tavily Search triggered for: {question}")
+                
+#                 tavily_results = tavily_client.search(query=question, max_results=5)
+#                 print(f"🌐 [TAVILY] Received {len(tavily_results.get('results', []))} results")
+
+#                 formatted_results = "\n\n".join(
+#                     [f"- {r.get('title', 'No Title')}: {r.get('url', 'No URL')}\n{r.get('content', 'No content')}" 
+#                      for r in tavily_results.get("results", [])]
+#                 )
+#                 print(f"🌐 [TAVILY] Formatted results length: {len(formatted_results)} chars")
+
+#                 print("🤖 [LLM] Generating answer from Tavily results...")
+#                 chain = search_prompt | llm | StrOutputParser()
+#                 search_answer = chain.invoke({
+#                     "question": question,
+#                     "search_results": formatted_results,
+#                     "current_date": current_info['date']
+#                 })
+#                 print(f"✅ [LLM] Answer generated: {search_answer[:100]}...")
+
+#                 print("💾 [MEMORY] Saving to database...")
+#                 save_chat_memory(db, ChatMemoryCreate(user_id=user_id, question=question, answer=search_answer))
+#                 print("✅ [MEMORY] Saved successfully")
+                
+#                 # Serialize Tavily results to ensure JSON compatibility
+#                 print("🔄 [TAVILY] Serializing Tavily results...")
+#                 serialized_tavily = []
+#                 for r in tavily_results.get("results", []):
+#                     try:
+#                         serialized_tavily.append({
+#                             "title": str(r.get("title", "")),
+#                             "url": str(r.get("url", "")),
+#                             "content": str(r.get("content", "")),
+#                             "score": float(r.get("score", 0.0)) if r.get("score") else 0.0
+#                         })
+#                     except Exception as ser_err:
+#                         print(f"⚠️ [TAVILY] Failed to serialize result: {ser_err}")
+#                         continue
+                
+#                 print(f"✅ [TAVILY] Serialized {len(serialized_tavily)} results")
+                
+#                 result = {
+#                     "answer": search_answer,
+#                     "context": serialized_tavily,
+#                     "source_type": "tavily_search"
+#                 }
+#                 print(f"✅ [RETURN] Returning Tavily result with {len(serialized_tavily)} context items")
+#                 return result
+
+#             except Exception as tavily_error:
+#                 print(f"❌ [TAVILY ERROR] {tavily_error}")
+#                 print(f"❌ [TAVILY TRACE] {traceback.format_exc()}")
+#                 logger.error(f"Tavily Search Error: {tavily_error}")
+#                 logger.debug(traceback.format_exc())
+#                 print("⚠️ [FALLBACK] Continuing to vector fallback...")
+
+#         # Vector DB Retrieval (fallback)
+#         print("🔍 [VECTOR] Starting vector retrieval...")
+#         context = "No relevant context found."
+#         docs = []
+#         serialized_context = []
+
+#         try:
+#             print(f"🔍 [VECTOR] Invoking retriever with question: {question}")
+#             docs = retriever.invoke(question)
+#             print(f"✅ [VECTOR] Retriever returned {len(docs)} items")
+            
+#             if docs:
+#                 print(f"🔍 [VECTOR] First doc type: {type(docs[0])}")
+#                 print(f"🔍 [VECTOR] First doc content: {docs[0]}")
+                
+#                 # Check if it's a dict with direct access
+#                 if isinstance(docs[0], dict):
+#                     print(f"🔍 [VECTOR] First doc keys: {list(docs[0].keys())}")
+#             else:
+#                 print("⚠️ [VECTOR] No docs returned!")
+
+#             context_parts = []
+#             for i, doc in enumerate(docs):
+#                 try:
+#                     print(f"🔍 [VECTOR] Processing doc {i}... Type: {type(doc)}")
+#                     content = extract_content_from_doc(doc)
+                    
+#                     if content:
+#                         context_parts.append(content)
+#                         print(f"✅ [VECTOR] Doc {i} added: {content[:100]}...")
+#                     else:
+#                         print(f"⚠️ [VECTOR] Doc {i} returned empty content")
+                        
+#                 except Exception as doc_error:
+#                     print(f"❌ [VECTOR] Error processing doc {i}: {doc_error}")
+#                     print(f"❌ [VECTOR] Doc {i} trace: {traceback.format_exc()}")
+#                     continue
+
+#             context = "\n\n".join(context_parts) if context_parts else "No relevant context found."
+#             print(f"🧩 [VECTOR] Built context from {len(context_parts)} chunks")
+#             print(f"🧩 [VECTOR] Total context length: {len(context)} chars")
+            
+#             # Serialize docs for JSON response
+#             print("🔄 [VECTOR] Starting serialization...")
+#             try:
+#                 serialized_context = serialize_docs(docs)
+#                 print(f"✅ [VECTOR] Serialization complete: {len(serialized_context)} items")
+#             except Exception as serialize_error:
+#                 print(f"❌ [VECTOR] Serialization failed: {serialize_error}")
+#                 print(f"❌ [VECTOR] Serialize trace: {traceback.format_exc()}")
+#                 serialized_context = []
+
+#         except Exception as retriever_error:
+#             print(f"❌ [VECTOR ERROR] {retriever_error}")
+#             print(f"❌ [VECTOR TRACE] {traceback.format_exc()}")
+#             logger.error(f"❌ Retriever Error: {retriever_error}")
+#             logger.debug(traceback.format_exc())
+#             context = "Context retrieval failed."
+#             serialized_context = []
+
+#         # Generate final answer
+#         try:
+#             print("🤖 [LLM] Generating final answer...")
+#             print(f"🤖 [LLM] Context length: {len(context)}")
+#             print(f"🤖 [LLM] Chat history length: {len(messages)}")
+            
+#             chain = prompt | llm | StrOutputParser()
+#             answer = chain.invoke({
+#                 "input": question,
+#                 "chat_history": messages,
+#                 "context": context
+#             })
+#             print(f"✅ [LLM] Answer generated: {answer[:100]}...")
+
+#             print("💾 [MEMORY] Saving to database...")
+#             save_chat_memory(db, ChatMemoryCreate(user_id=user_id, question=question, answer=answer))
+#             print("✅ [MEMORY] Saved successfully")
+            
+#             result = {
+#                 "answer": answer,
+#                 "context": serialized_context,
+#                 "source_type": "vectorstore"
+#             }
+#             print(f"✅ [RETURN] Returning vectorstore result")
+#             print(f"✅ [RETURN] Context items: {len(serialized_context)}")
+#             return result
+
+#         except Exception as llm_error:
+#             print(f"❌ [LLM ERROR] {llm_error}")
+#             print(f"❌ [LLM TRACE] {traceback.format_exc()}")
+#             logger.error(f"LLM generation error: {llm_error}")
+#             answer = "Sorry, answer generate nahi kar paya abhi. Thodi der baad try karo."
+#             save_chat_memory(db, ChatMemoryCreate(user_id=user_id, question=question, answer=answer))
+#             return {
+#                 "answer": answer,
+#                 "context": [],
+#                 "source_type": "error"
+#             }
+
+#     except Exception as e:
+#         print(f"❌ [CRITICAL ERROR] {e}")
+#         print(f"❌ [CRITICAL TRACE] {traceback.format_exc()}")
+#         logger.error(f"Critical Error: {e}")
+#         logger.debug(traceback.format_exc())
+#         return {
+#             "answer": f"Sorry, ek technical issue hua: {e}",
+#             "context": [],
+#             "source_type": "error"
+#         }
+
+
+
+
 
 from langchain_core.tools import Tool
 from sqlalchemy.orm import Session
@@ -447,6 +847,36 @@ def serialize_docs(docs):
     return serialized
 
 
+def detect_realtime_intent(question: str) -> bool:
+    """Smart detection for realtime or dynamic queries."""
+    q = question.lower().strip()
+
+    realtime_keywords = [
+        "latest", "current", "today", "now", "live", "update", "trending", "recent", "breaking", "abhi",
+        "aaj", "abhi ka", "kal ka", "score", "match", "price", "rate", "value", "weather", "temperature",
+        "winner", "ipl", "news", "gold", "silver", "bitcoin", "stock", "sensex", "bazar", "market"
+    ]
+
+    finance_words = ["price", "rate", "value", "gold", "silver", "usd", "bitcoin", "crypto", "share", "stock"]
+    event_words = ["ipl", "match", "score", "winner", "tournament", "game"]
+    news_words = ["news", "update", "today", "breaking", "headline"]
+    weather_words = ["weather", "temperature", "climate", "rain", "humidity"]
+
+    if any(word in q for word in ["aaj", "abhi", "today", "current", "latest", "now"]) and \
+       any(w in q for w in (finance_words + event_words + news_words + weather_words)):
+        return True
+
+    if any(str(y) in q for y in range(2023, 2031)):
+        return True
+
+    if any(k in q for k in realtime_keywords):
+        return True
+
+    return False
+
+
+
+
 def chat_with_memory_db(db: Session, user_id: UUID, question: str):
     """Main Sharma Ji Bot Function (Tavily + Memory + Vector + LLM)"""
     try:
@@ -484,10 +914,11 @@ def chat_with_memory_db(db: Session, user_id: UUID, question: str):
             return {"answer": answer, "context": [], "source_type": "system_time"}
 
         # Tavily Search (for real-time info)
-        realtime_keywords = ["latest", "current", "news", "weather", "today", "2025", "score", "update", "ipl", "match", "win", "winner"]
-        print(f"🔍 [CHECK] Checking for realtime keywords...")
-        needs_search = any(k in question.lower() for k in realtime_keywords)
-        print(f"🔍 [CHECK] Needs search: {needs_search}")
+        print("🔍 [CHECK] Detecting if question needs realtime search...")
+        needs_search = detect_realtime_intent(question)
+        print(f"🔍 [CHECK] Realtime intent detected: {needs_search}")
+
+
 
         if needs_search:
             try:
