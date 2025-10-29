@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str  # 👈 Added GROQ key
     GROQ_MODEL: str
 
+    #Bot & Creat0r Name
+    BOT_NAME: str
+    CREATOR_NAME: str
+
+    TAVILY_API_KEY:str
+
     # AI clients as properties to avoid Pydantic field validation errors
     @property
     def openai_client(self):

@@ -24,19 +24,23 @@ class ChatResponse(BaseModel):
 async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db)):
     try:
         response = chat_with_memory_db(db, request.user_id, request.question)
-        
-        # Extract context if available
+
+        # context is already a list of dicts (serialized safely)
         context = response.get("context", [])
-        sources = [{"content": doc.page_content, "metadata": doc.metadata} for doc in context] if context else []
-        
+
+        # Directly rename context to sources for your response
+        sources = [{"content": doc.get("content", ""), "metadata": doc.get("metadata", {})} for doc in context]
+
         return {
-            "answer": response["answer"],
+            "answer": response.get("answer", ""),
             "sources": sources
         }
+
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/history/{user_id}", response_model=List[ChatMemoryResponse])
